@@ -4,29 +4,36 @@ require_relative 'colors'
 class Board 
   def initialize
     @board = []
+    # variables to help validate and make moves
+    @end_square = []
+    @start_square = []
   end  
-
-  # @board[0][0] = 'A'  
-  # @board[0][1] = 8
-  # @board[0][2] = '♜' ♜♞♝♜♛♚♝♞♜ ♟️♟️♟️♟️♟️♟️♟️♟️
-  # @board[0][3] = ' ' background color - bg_black or bg_white
-
-  # def play_game
-  #   make_board
-  #   loop do
-  #     play_round
-  #   end
-  # end
 
   def play_round
     loop do
-      move = prompt_user_input_cyan
-      make_move_cyan(move)
-      print_board
-      move = prompt_user_input_red
-      make_move_red(move)
-      print_board
+      loop do
+        move = prompt_user_input_cyan
+        if move_valid_cyan?(move)
+          make_move_cyan(move)
+          print_board
+          break
+        else
+          puts 'wrong input. try again'
+        end
+      end
+      
+      loop do
+        move = prompt_user_input_red
+        if move_valid_red?(move)        
+          make_move_red(move)
+          print_board
+          break
+        else
+          puts 'wrong input. try again'
+        end
+      end
     end
+
   end
 
   def make_board 
@@ -37,7 +44,7 @@ class Board
   end
 
   def make_board_arr
-    @board = Array.new(64) { |i| [('A'.ord + i % 8).chr, 8 - (i/8), '   ',''] }
+    @board = Array.new(64) { |i| [('a'.ord + i % 8).chr, 8 - (i/8), '   ',''] }
   end
 
   def color_board
@@ -92,9 +99,8 @@ class Board
     end
     print '                      a  b  c  d  e  f  g  h'
     10.times do puts end
-    # puts @board[0][0], @board[0][1], @board[0][2], @board[0][3]
-    # puts @board[0]
   end
+
 
   def prompt_user_input_cyan
     puts 'Cyan, enter a move: '
@@ -106,82 +112,73 @@ class Board
     move = gets.chomp
   end
 
-  def make_move_cyan(move)
-    print start_square = find_start_square_cyan(move)
-    puts
-    print end_square = find_end_square_cyan(move)
-    puts
-    print start_square[2]
-    if start_square
-      start_square[2] = '   '
-      end_square[2] = ' ♟ '.cyan
-    else
-      print 'wrong input'
-    end
 
-    puts
-  end   
-
-  def make_move_red(move)
-    print start_square = find_start_square_red(move)
-    print end_square = find_end_square_red(move)
-    if start_square
-      start_square[2] = '   '
-      end_square[2] = ' ♟ '.red
-    else
-      print 'wrong input'
-    end
-
-    puts
-  end   
-  
-  def find_start_square_cyan(move)
-    if move.length == 2
-      col = move[0].ord - 97
-      row = 9 - move[1].to_i - 1
-      # input_square = @board[row * 8 + col]
-      one_below = @board[(row * 8 + col) + 8]
-      two_below = @board[(row * 8 + col) + 16]
-      if one_below[2].include?('♟') && one_below[2].include?('36')# one square below input square
-        puts 'pawn'
-        return one_below
-      elsif two_below[2].include?('♟') && two_below[2].include?('36') # two squares below input square
-        puts 'pawn2'
-        return two_below
-      else 
-        puts 'wrong input'
-        return nil
-      end
-      #@board[row * 8 + col][2] = ' ♟ '.cyan
+  def move_valid_cyan?(move) # return true or false, but also set @start_square and @end_square
+    @start_square = find_start_square_cyan(move)
+    @end_square = find_end_square_cyan(move)
+    if @start_square == nil || @end_square == nil
+      return false
+    elsif move.length == 2 && @end_square[2].include?('♟')
+      return false
+    elsif move.length == 2 && @start_square[2].include?('♟') && @start_square[2].include?('36') 
+      return true    
     end
   end
 
-  def find_end_square_cyan(move)
+  def move_valid_red?(move)
+    @start_square = find_start_square_red(move)
+    @end_square = find_end_square_red(move)
+    if @start_square == nil || @end_square == nil
+      return false
+    elsif move.length == 2 && @end_square[2].include?('♟')
+      return false
+    elsif move.length == 2 && @start_square[2].include?('♟') && @start_square[2].include?('31') 
+      return true
+    end
+  end
+
+  
+  def find_start_square_cyan(move)  # returns start square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
+    if move.length == 2
+      end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i }
+      input_square = @board[end_index]
+      one_below = @board[end_index + 8]
+      two_below = @board[end_index + 16]
+
+      if one_below[2].include?('♟') && one_below[2].include?('36')# one square below input square
+        return one_below
+      elsif two_below[2].include?('♟') && two_below[2].include?('36') && two_below[1] == 2 && one_below[2].include?('   ') # two squares below input square
+        return two_below
+      else 
+        return nil
+      end
+    end
+  end
+  
+  def find_start_square_red(move)
+    if move.length == 2
+      end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i }
+      input_square = @board[end_index]
+      one_above = @board[end_index - 8]
+      two_above = @board[end_index - 16]
+      
+      if one_above[2].include?('♟') && one_above[2].include?('31')  # one square above input square
+        return one_above
+      elsif two_above[2].include?('♟') && two_above[2].include?('31') && two_above[1] == 7 && one_above[2].include?('   ') # two squares above input square
+        return two_above
+      end
+    end
+  end
+
+  
+  def find_end_square_cyan(move)  # returns end square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
     if move.length == 2
       col = move[0].ord - 97
       row = 9 - move[1].to_i - 1
       return @board[row * 8 + col]#[2]
     end
   end
-
-  def find_start_square_red(move)
-    if move.length == 2
-      col = move[0].ord - 97
-      row = 9 - move[1].to_i - 1
-      # input_square = @board[row * 8 + col]
-      one_above = @board[(row * 8 + col) - 8]
-      two_above = @board[(row * 8 + col) - 16]
-      if one_above[2].include?('♟') # one square above input square
-        puts 'pawn'
-        return one_above
-      elsif two_above[2].include?('♟') # two squares above input square
-        puts 'pawn2'
-        return two_above
-      end
-      #@board[row * 8 + col][2] = ' ♟ '.cyan
-    end
-  end
-
+  
   def find_end_square_red(move)
     if move.length == 2
       col = move[0].ord - 97
@@ -190,6 +187,25 @@ class Board
     end
   end
 
+  
+  def make_move_cyan(move)
+    if @start_square
+      @start_square[2] = '   '
+      @end_square[2] = ' ♟ '.cyan
+    else
+      print 'wrong input'
+    end
+    puts
+  end   
+  
+  def make_move_red(move)
+    if @start_square
+      @start_square[2] = '   '
+      @end_square[2] = ' ♟ '.red
+    else
+      print 'wrong input'
+    end
+  end
 end
 
 
@@ -198,3 +214,13 @@ end
 #   row = move[2].to_i - 1
 #   puts col, row
 #   @board[row * 8 + col][2] = ' ♟ '.cyan
+
+
+
+# old way to find start square:
+
+      # col = move[0].ord - 97
+      # row = 9 - move[1].to_i - 1
+      # input_square = @board[row * 8 + col]
+      # one_above = @board[(row * 8 + col) - 8]
+      # two_above = @board[(row * 8 + col) - 16]
