@@ -11,9 +11,7 @@ class Game
       @board.play_round
     end
   end
-
 end
 
 
-  game1 = Game.new
-  game1.play_game
+  

@@ -5,6 +5,7 @@ class Board
   def initialize
     @board = []
     # variables to help validate and make moves
+    @move = ''
     @end_square = []
     @start_square = []
   end  
@@ -12,9 +13,9 @@ class Board
   def play_round
     loop do
       loop do
-        move = prompt_user_input_cyan
-        if move_valid_cyan?(move)
-          make_move_cyan(move)
+        @move = prompt_user_input_cyan
+        if move_valid_cyan?(@move)
+          make_move_cyan(@move)
           print_board
           break
         else
@@ -23,9 +24,9 @@ class Board
       end
       
       loop do
-        move = prompt_user_input_red
-        if move_valid_red?(move)        
-          make_move_red(move)
+        @move = prompt_user_input_red
+        if move_valid_red?(@move)        
+          make_move_red(@move)
           print_board
           break
         else
@@ -58,6 +59,8 @@ class Board
       end
     end
   end
+
+  
 
   def set_pieces
     @board.each_slice(8) do |row|
@@ -104,12 +107,12 @@ class Board
 
   def prompt_user_input_cyan
     puts 'Cyan, enter a move: '
-    move = gets.chomp
+    @move = gets.chomp
   end
 
   def prompt_user_input_red
     puts 'Red, enter a move: '
-    move = gets.chomp
+    @move = gets.chomp
   end
 
 
@@ -118,10 +121,19 @@ class Board
     @end_square = find_end_square_cyan(move)
     if @start_square == nil || @end_square == nil
       return false
-    elsif move.length == 2 && @end_square[2].include?('♟')
+    elsif pawn? && @end_square[2].include?('♟')
       return false
-    elsif move.length == 2 && @start_square[2].include?('♟') && @start_square[2].include?('36') 
-      return true    
+    elsif pawn? && @start_square[2].include?('36') 
+      return true   
+    elsif rook? && 
+          (@start_square[0] == @end_square[0] || @start_square[1] == @end_square[1]) && 
+          @start_square[2].include?('♜') &&
+          @end_square[2].include?('   ') &&
+          path_clear?
+      puts 'rook move valid'
+      return true
+    else
+      return false
     end
   end
 
@@ -130,17 +142,21 @@ class Board
     @end_square = find_end_square_red(move)
     if @start_square == nil || @end_square == nil
       return false
-    elsif move.length == 2 && @end_square[2].include?('♟')
+    elsif pawn? && @end_square[2].include?('♟')
       return false
-    elsif move.length == 2 && @start_square[2].include?('♟') && @start_square[2].include?('31') 
+    elsif pawn? && @start_square[2].include?('31') 
       return true
+
+    else 
+      return false
     end
   end
 
-  
-  def find_start_square_cyan(move)  # returns start square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
-    if move.length == 2
-      end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i }
+  # returns start square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
+  def find_start_square_cyan(move)
+    if pawn?
+      end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i } # end_index = sq to which move goes
+      @end_square = @board[end_index]
       input_square = @board[end_index]
       one_below = @board[end_index + 8]
       two_below = @board[end_index + 16]
@@ -152,12 +168,25 @@ class Board
       else 
         return nil
       end
+    elsif move.length == 3
+      if rook?
+        @board.each do |square|
+          if square[2].include?('♜') && square[2].include?('36') && (square[0] == move[1] || square[1] == move[2].to_i)
+            return square
+          end
+        end
+      end
+
+      # end_index =  @board.find_index { |square| square[0] == move[1] && square[1] == move[2].to_i }
+    else
+      return 'tbd'
     end
   end
   
   def find_start_square_red(move)
-    if move.length == 2
+    if pawn?
       end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i }
+      @end_square = @board[end_index]
       input_square = @board[end_index]
       one_above = @board[end_index - 8]
       two_above = @board[end_index - 16]
@@ -166,30 +195,44 @@ class Board
         return one_above
       elsif two_above[2].include?('♟') && two_above[2].include?('31') && two_above[1] == 7 && one_above[2].include?('   ') # two squares above input square
         return two_above
+      else 
+        return nil
       end
+    # elsif rook?
+    # end
+    else
+      return 'tbd'
     end
   end
 
   
   def find_end_square_cyan(move)  # returns end square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
-    if move.length == 2
-      col = move[0].ord - 97
-      row = 9 - move[1].to_i - 1
-      return @board[row * 8 + col]#[2]
+    if pawn?
+      # col = move[0].ord - 97
+      # row = 9 - move[1].to_i - 1
+      # return @board[row * 8 + col]#[2]
+      return @end_square
+    elsif move.length == 3
+      end_index =  @board.find_index { |square| square[0] == move[1] && square[1] == move[2].to_i }
+      return @board[end_index]
     end
   end
   
   def find_end_square_red(move)
-    if move.length == 2
-      col = move[0].ord - 97
-      row = 9 - move[1].to_i - 1
-      return @board[row * 8 + col]#[2]
+    if pawn?
+      # col = move[0].ord - 97
+      # row = 9 - move[1].to_i - 1
+      # return @board[row * 8 + col]#[2]
+      return @end_square
+    elsif move.length == 3
+      end_index =  @board.find_index { |square| square[0] == move[1] && square[1] == move[2].to_i }
+      return end_index
     end
   end
 
   
   def make_move_cyan(move)
-    if @start_square
+    if pawn? # @start_square
       @start_square[2] = '   '
       @end_square[2] = ' ♟ '.cyan
     else
@@ -206,6 +249,32 @@ class Board
       print 'wrong input'
     end
   end
+
+  def path_clear?
+    if rook?
+      if @start_square[0] == @end_square[0] # same column
+        if @start_square[1] > @end_square[1] # move goes down
+         p @board.select { |square| square[0] == @end_square[0] && square[1] < @start_square[1] && square[1] > @end_square[1]}.all? { |element| element[2].include?('   ') }
+        elsif @start_square[1] < @end_square[1] # move goes up
+         p @board.select { |square| square[0] == @end_square[0] && square[1] > @start_square[1] && square[1] < @end_square[1]}.all? { |element| element[2].include?('   ') }
+         puts 'lulul'
+        end      
+      end
+    end
+  end
+
+
+  # take? eigene methode.
+
+  def pawn?
+    @move.length == 2 ||  @start_square[2].include?('♟')
+  end
+
+  def rook?
+    @move[0] == 'R'
+  end
+
+
 end
 
 
