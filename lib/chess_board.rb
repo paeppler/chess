@@ -14,23 +14,23 @@ class Board
     loop do
       loop do
         @move = prompt_user_input_cyan
-        if move_valid_cyan?(@move)
-          make_move_cyan(@move)
+        if move_valid_cyan?
+          make_move_cyan
           print_board
           break
         else
-          puts 'wrong input. try again'
+          puts 'invalid input. try again'
         end
       end
       
       loop do
         @move = prompt_user_input_red
-        if move_valid_red?(@move)        
-          make_move_red(@move)
+        if move_valid_red?       
+          make_move_red
           print_board
           break
         else
-          puts 'wrong input. try again'
+          puts 'invalid input. try again'
         end
       end
     end
@@ -116,10 +116,14 @@ class Board
   end
 
 
-  def move_valid_cyan?(move) # return true or false, but also set @start_square and @end_square
-    @start_square = find_start_square_cyan(move)
-    @end_square = find_end_square_cyan(move)
-    if @start_square == nil || @end_square == nil
+  def move_valid_cyan? # return true or false, but also set @start_square and @end_square
+    @start_square = find_start_square_cyan(@move)
+    p @start_square
+    if @start_square == nil
+      return false
+    end
+    p @end_square = find_end_square_cyan(@move)
+    if @end_square == nil
       return false
     elsif pawn? && @end_square[2].include?('♟')
       return false
@@ -129,33 +133,59 @@ class Board
           (@start_square[0] == @end_square[0] || @start_square[1] == @end_square[1]) && 
           @start_square[2].include?('♜') &&
           @end_square[2].include?('   ') &&
-          path_clear?
-      puts 'rook move valid'
+          path_clear?      
       return true
+    elsif knight?
+      if @end_square[2].include?('   ') # alle anderen Bed. in find_start_square schon abgedeckt
+        return true
+      end
+    elsif bishop?
+      if @end_square[2].include?('   ') # alle anderen Bed. in find_start_square schon abgedeckt
+        return true
+      end
     else
       return false
     end
   end
 
-  def move_valid_red?(move)
-    @start_square = find_start_square_red(move)
-    @end_square = find_end_square_red(move)
-    if @start_square == nil || @end_square == nil
+  def move_valid_red?
+    @start_square = find_start_square_red(@move)
+    if @start_square == nil
+      return false
+    end
+    @end_square = find_end_square_red(@move)
+    if @end_square == nil
       return false
     elsif pawn? && @end_square[2].include?('♟')
       return false
     elsif pawn? && @start_square[2].include?('31') 
       return true
-
+    elsif rook? && 
+          (@start_square[0] == @end_square[0] || @start_square[1] == @end_square[1]) && 
+          @start_square[2].include?('♜') &&
+          @end_square[2].include?('   ') &&
+          path_clear?
+      puts 'rook move valid'
+      return true
+    elsif knight?
+      if @end_square[2].include?('   ') # alle anderen Bed. in find_start_square schon abgedeckt
+        return true
+      end
+    elsif bishop?
+      if @end_square[2].include?('   ') # alle anderen Bed. in find_start_square schon abgedeckt
+        return true
+      end
     else 
       return false
     end
   end
 
-  # returns start square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
+  # returns start square, regardless of validity of move. if input is off board or wrong notation, returns nil
   def find_start_square_cyan(move)
-    if pawn?
+    if move.length == 2
       end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i } # end_index = sq to which move goes
+      return nil if end_index == nil
+      
       @end_square = @board[end_index]
       input_square = @board[end_index]
       one_below = @board[end_index + 8]
@@ -175,17 +205,52 @@ class Board
             return square
           end
         end
+      elsif knight?
+        target_square = nil
+        @board.each do |square|
+          if square[2].include?('♞') && 
+            square[2].include?('36') &&
+            ((square[0].ord + 1 == move[1].ord && square[1] + 2 == move[2].to_i) || # oben rechts(1)
+            (square[0].ord + 2 == move[1].ord && square[1] + 1 == move[2].to_i) || # oben rechts(2)
+            (square[0].ord + 2 == move[1].ord && square[1] - 1 == move[2].to_i) || # unten rechts(3)
+            (square[0].ord + 1 == move[1].ord && square[1] - 2 == move[2].to_i) || # unten rechts(4)
+            (square[0].ord - 1 == move[1].ord && square[1] - 2 == move[2].to_i) || # unten links(5)
+            (square[0].ord - 2 == move[1].ord && square[1] - 1 == move[2].to_i) || # unten links(6)
+            (square[0].ord - 2 == move[1].ord && square[1] + 1 == move[2].to_i) || # oben links(7)
+            (square[0].ord - 1 == move[1].ord && square[1] + 2 == move[2].to_i))    # oben links(8)
+            puts 'execute'
+            target_square = square          
+          end
+        end
+        target_square
+      elsif bishop?
+        target_square = nil
+        @board.each do |square|
+          if square[2].include?('♝') &&
+              square[2].include?('36')  &&
+              ((1..7).any? do |i|
+                square[0].ord == move[1].ord + i && square[1] == move[2].to_i + i || # nach oben rechts
+                square[0].ord == move[1].ord + i && square[1] == move[2].to_i - i || # nach unten rechts
+                square[0].ord == move[1].ord - i && square[1] == move[2].to_i + i || # nach unten links
+                square[0].ord == move[1].ord - i && square[1] == move[2].to_i - i  # nach oben links 
+              end)  
+              print 'if bishop is true'          
+            target_square = square
+          end
+        end
+        target_square       
       end
-
-      # end_index =  @board.find_index { |square| square[0] == move[1] && square[1] == move[2].to_i }
     else
       return 'tbd'
     end
   end
+
+  
   
   def find_start_square_red(move)
-    if pawn?
+    if move.length == 2
       end_index = @board.find_index { |square| square[0] == move[0] && square[1] == move[1].to_i }
+      return nil if end_index == nil
       @end_square = @board[end_index]
       input_square = @board[end_index]
       one_above = @board[end_index - 8]
@@ -198,8 +263,47 @@ class Board
       else 
         return nil
       end
-    # elsif rook?
-    # end
+    elsif move.length == 3
+      if rook?
+        @board.each do |square|
+          if square[2].include?('♜') && square[2].include?('31') && (square[0] == move[1] || square[1] == move[2].to_i)
+            return square
+          end
+        end
+      elsif knight?
+        target_square = nil
+        @board.each do |square|
+          if square[2].include?('♞') && 
+            square[2].include?('31') &&
+            ((square[0].ord + 1 == move[1].ord && square[1] + 2 == move[2].to_i) || # oben rechts(1)
+            (square[0].ord + 2 == move[1].ord && square[1] + 1 == move[2].to_i) || # oben rechts(2)
+            (square[0].ord + 2 == move[1].ord && square[1] - 1 == move[2].to_i) || # unten rechts(3)
+            (square[0].ord + 1 == move[1].ord && square[1] - 2 == move[2].to_i) || # unten rechts(4)
+            (square[0].ord - 1 == move[1].ord && square[1] - 2 == move[2].to_i) || # unten links(5)
+            (square[0].ord - 2 == move[1].ord && square[1] - 1 == move[2].to_i) || # unten links(6)
+            (square[0].ord - 2 == move[1].ord && square[1] + 1 == move[2].to_i) || # oben links(7)
+            (square[0].ord - 1 == move[1].ord && square[1] + 2 == move[2].to_i))    # oben links(8)
+            target_square = square
+          end
+        end
+        target_square
+      elsif bishop?
+        target_square = nil
+        @board.each do |square|
+          if square[2].include?('♝') &&
+              square[2].include?('31')  &&
+              ((1..7).any? do |i|
+                square[0].ord == move[1].ord + i && square[1] == move[2].to_i + i || # nach oben rechts
+                square[0].ord == move[1].ord + i && square[1] == move[2].to_i - i || # nach unten rechts
+                square[0].ord == move[1].ord - i && square[1] == move[2].to_i + i || # nach unten links
+                square[0].ord == move[1].ord - i && square[1] == move[2].to_i - i  # nach oben links 
+              end)  
+              print 'if bishop is true'          
+            target_square = square
+          end
+        end
+        target_square       
+      end
     else
       return 'tbd'
     end
@@ -208,10 +312,14 @@ class Board
   
   def find_end_square_cyan(move)  # returns end square, regardless of validity of move. if input is invalid(off board or wrong notation), returns nil
     if pawn?
-      # col = move[0].ord - 97
-      # row = 9 - move[1].to_i - 1
-      # return @board[row * 8 + col]#[2]
-      return @end_square
+      if @end_square != nil
+        if @end_square[2].include?('   ')
+          return @end_square
+        else 
+          return nil
+        end
+      end
+      return end_square
     elsif move.length == 3
       end_index =  @board.find_index { |square| square[0] == move[1] && square[1] == move[2].to_i }
       return @board[end_index]
@@ -220,31 +328,47 @@ class Board
   
   def find_end_square_red(move)
     if pawn?
-      # col = move[0].ord - 97
-      # row = 9 - move[1].to_i - 1
-      # return @board[row * 8 + col]#[2]
+      if @end_square != nil
+        if @end_square[2].include?('   ')
+          return @end_square
+        else 
+          return nil
+        end
+      end
       return @end_square
     elsif move.length == 3
       end_index =  @board.find_index { |square| square[0] == move[1] && square[1] == move[2].to_i }
-      return end_index
+      return @board[end_index]
     end
   end
 
   
-  def make_move_cyan(move)
-    if pawn? # @start_square
-      @start_square[2] = '   '
+  def make_move_cyan
+    @start_square[2] = '   '
+    if pawn?
       @end_square[2] = ' ♟ '.cyan
+    elsif rook?
+      @end_square[2] = ' ♜ '.cyan
+    elsif knight?
+      @end_square[2] = ' ♞ '.cyan
+    elsif bishop?
+      @end_square[2] = ' ♝ '.cyan
     else
       print 'wrong input'
     end
     puts
   end   
   
-  def make_move_red(move)
-    if @start_square
-      @start_square[2] = '   '
+  def make_move_red
+    @start_square[2] = '   '
+    if pawn?
       @end_square[2] = ' ♟ '.red
+    elsif rook?
+      @end_square[2] = ' ♜ '.red
+    elsif knight?
+      @end_square[2] = ' ♞ '.red
+    elsif bishop?
+      @end_square[2] = ' ♝ '.red
     else
       print 'wrong input'
     end
@@ -252,26 +376,49 @@ class Board
 
   def path_clear?
     if rook?
-      if @start_square[0] == @end_square[0] # same column
-        if @start_square[1] > @end_square[1] # move goes down
-         p @board.select { |square| square[0] == @end_square[0] && square[1] < @start_square[1] && square[1] > @end_square[1]}.all? { |element| element[2].include?('   ') }
-        elsif @start_square[1] < @end_square[1] # move goes up
-         p @board.select { |square| square[0] == @end_square[0] && square[1] > @start_square[1] && square[1] < @end_square[1]}.all? { |element| element[2].include?('   ') }
-         puts 'lulul'
+      if @start_square[0] == @end_square[0] # check if same column
+        if @start_square[1] > @end_square[1] && # move goes down
+           @board.select { |square| square[0] == @end_square[0] && square[1] < @start_square[1] && square[1] > @end_square[1]}.all? { |element| element[2].include?('   ') }
+          return true
+        elsif @start_square[1] < @end_square[1] && # move goes up
+              @board.select { |square| square[0] == @end_square[0] && square[1] > @start_square[1] && square[1] < @end_square[1]}.all? { |element| element[2].include?('   ') }
+          puts 'lulul'
+          return true
+        end
+      elsif @start_square[1] == @end_square[1] && # check if same row
+        if @start_square[0].ord < @end_square[0].ord && # move goes right
+           @board.select { |square| square[1] == @end_square[1] && square[0].ord > @start_square[0].ord && square[0].ord < @end_square[0].ord}.all? { |element| element[2].include?('   ') }
+          return true
+        elsif @start_square[0].ord > @end_square[0].ord &&
+              @board.select { |square| square[1] == @end_square[1] && square[0].ord < @start_square[0].ord && square[0].ord > @end_square[0].ord}.all? { |element| element[2].include?('   ') }
+          return true
         end      
       end
     end
+
+    # if bishop?
+
   end
 
 
   # take? eigene methode.
 
   def pawn?
-    @move.length == 2 ||  @start_square[2].include?('♟')
+    return nil if @start_square.nil? # aenderung von: @start_square[2] (mög. break)
+
+    @move.length == 2 ||  @start_square[2].include?('♟') # [2]
   end
 
   def rook?
     @move[0] == 'R'
+  end
+
+  def knight?
+    @move[0] == 'N'
+  end
+
+  def bishop?
+    @move[0] == 'B'
   end
 
 
